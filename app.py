@@ -13,6 +13,7 @@ from flask_migrate import Migrate, upgrade, init
 from flask import Flask, render_template, request
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
+import csv
 
 jobstores = { 'default': SQLAlchemyJobStore(url='sqlite:///instance/jobs.sqlite')}
 scheduler = BackgroundScheduler(jobstores=jobstores)
@@ -157,6 +158,10 @@ def fetch_magiceden():
             data = response.json()
             nft = NFT.query.filter_by(symbol=data["symbol"]).first()
             print(f"Fetching ME at {datetime.now()} - Floorprice: {data.get('floorPrice')} ({data.get('floorPrice') / 1000000000}) - {symbol['symbol']}")
+            
+            with open(f'log-{symbol["symbol"]}.csv', 'a', newline='') as csvfile:
+                logwriter = csv.writer(csvfile, delimiter=';')
+                logwriter.writerow([f"{data.get('floorPrice') / 1000000000}", str(datetime.now())])
             # Bug in MagicEden giving floorPrices below 999, so we ignore those
             if data.get("floorPrice") < 999:
                 print("Floorprice below 999, ignoring")
@@ -230,6 +235,10 @@ def fetch_binance():
             response = requests.get(url, headers={"accept": "application/json"})
             data = response.json()
             crypto = CRYPTO.query.filter_by(symbol=currency["symbol"]).first()
+
+            with open(f'log-{currency["symbol"]}.csv', 'a', newline='') as csvfile:
+                logwriter = csv.writer(csvfile, delimiter=';')
+                logwriter.writerow([f"{data.get('price')}", str(datetime.now())])
             # Add data to database if it doesn't exist
             if not crypto:
                 crypto = CRYPTO(
